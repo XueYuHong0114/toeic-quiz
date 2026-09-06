@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>多益單字測驗</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#EFEAD9; --surface:#FFFDF7; --surface-2:#E6E0CC;
+    --ink:#2B2A28; --ink-soft:#6B6558;
+    --accent:#1F6F5C; --accent-ink:#0E3C31;
+    --highlight:#C99A2E; --highlight-ink:#5C4514;
+    --wrong:#B0453A; --wrong-ink:#5C231D;
+    --line:#D8D0B8;
+    --shadow: 0 1px 0 rgba(43,42,40,0.06), 0 8px 24px rgba(43,42,40,0.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1B1D1B; --surface:#24271F; --surface-2:#2E3227;
+      --ink:#EDE7D6; --ink-soft:#A8A18C;
+      --accent:#4FB69B; --accent-ink:#DFF5EE;
+      --highlight:#E3BE5C; --highlight-ink:#2A2008;
+      --wrong:#E0847A; --wrong-ink:#341210;
+      --line:#3A3E32;
+      --shadow: 0 1px 0 rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1B1D1B; --surface:#24271F; --surface-2:#2E3227;
+    --ink:#EDE7D6; --ink-soft:#A8A18C;
+    --accent:#4FB69B; --accent-ink:#DFF5EE;
+    --highlight:#E3BE5C; --highlight-ink:#2A2008;
+    --wrong:#E0847A; --wrong-ink:#341210;
+    --line:#3A3E32;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:640px;margin:0 auto;padding:28px 20px 60px;}
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:14px;}
+  .masthead h1{font-family:'Fraunces',serif;font-weight:600;font-size:22px;margin:0;letter-spacing:.2px;}
+  .masthead .tag{font-size:13px;color:var(--ink-soft);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:26px 22px;}
+  .center-note{text-align:center;color:var(--ink-soft);padding:40px 10px;font-size:15px;line-height:1.7;}
+  .spinner{width:28px;height:28px;margin:0 auto 16px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .error-box{text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:18px;color:var(--ink);font-size:14.5px;line-height:1.7;}
+  .error-box strong{display:block;margin-bottom:6px;font-size:15.5px;}
+  button{font-family:inherit;cursor:pointer;}
+  .btn{display:inline-block;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:9px;padding:11px 18px;font-size:15px;font-weight:500;transition:transform .08s ease,background .15s ease;}
+  .btn:hover{background:var(--line);}
+  .btn:active{transform:scale(.98);}
+  .btn-primary{background:var(--accent);color:var(--surface);border-color:var(--accent);font-weight:600;}
+  .btn-primary:hover{filter:brightness(1.06);}
+  .btn-block{display:block;width:100%;text-align:center;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .login-wrap{text-align:center;padding:20px 6px 8px;}
+  .login-wrap p{color:var(--ink-soft);font-size:14.5px;line-height:1.7;margin-bottom:22px;}
+  .g-btn{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    padding:12px 22px;font-size:15px;font-weight:600;color:var(--ink);
+  }
+  .g-btn:hover{border-color:var(--accent);}
+  .file-list{list-style:none;margin:0;padding:0;}
+  .file-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:16px 18px;margin-bottom:10px;font-size:16px;}
+  .file-item:hover{border-color:var(--accent);}
+  .file-item .day{font-family:'Fraunces',serif;font-weight:600;font-size:19px;color:var(--accent-ink);}
+  .file-item .sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .file-item .arrow{color:var(--ink-soft);font-size:18px;}
+  .day-label{font-size:13px;color:var(--ink-soft);margin-bottom:4px;}
+  .count-title{font-family:'Fraunces',serif;font-size:24px;font-weight:600;margin:0 0 18px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+  .chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:9px 18px;font-size:14.5px;color:var(--ink);}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600;}
+  .num-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+  .num-row input[type=number]{width:90px;font-size:18px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);}
+  .hint{font-size:12.5px;color:var(--ink-soft);}
+  .progress{display:flex;gap:5px;margin-bottom:20px;}
+  .progress .tick{flex:1;height:5px;border-radius:3px;background:var(--line);}
+  .progress .tick.done{background:var(--accent);}
+  .progress .tick.current{background:var(--highlight);}
+  .q-eyebrow{font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .q-word{font-family:'Fraunces',serif;font-weight:700;font-size:38px;line-height:1.15;margin:0 0 26px;word-break:break-word;}
+  .options{display:grid;grid-template-columns:1fr;gap:10px;}
+  @media (min-width:520px){.options{grid-template-columns:1fr 1fr;}}
+  .opt{text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:16px;line-height:1.5;color:var(--ink);}
+  .opt:hover{border-color:var(--accent);}
+  .opt.correct{background:color-mix(in srgb, var(--accent) 18%, var(--surface));border-color:var(--accent);color:var(--ink);font-weight:600;}
+  .opt.wrong{background:color-mix(in srgb, var(--wrong) 16%, var(--surface));border-color:var(--wrong);color:var(--ink);}
+  .opt.disabled{cursor:default;}
+  .opt.dim{opacity:.55;}
+  .feedback{margin-top:22px;border-top:1px solid var(--line);padding-top:18px;}
+  .feedback .verdict{font-family:'Fraunces',serif;font-weight:600;font-size:19px;margin-bottom:12px;}
+  .feedback .verdict.correct{color:var(--accent-ink);}
+  .feedback .verdict.wrong{color:var(--wrong-ink);}
+  .detail-row{margin-bottom:10px;font-size:15px;line-height:1.65;}
+  .detail-row .k{color:var(--ink-soft);font-size:12.5px;display:block;margin-bottom:2px;}
+  .detail-row .example{font-style:italic;background:var(--surface-2);border-radius:8px;padding:10px 12px;}
+  .detail-row .note{color:var(--ink-soft);font-size:13.5px;}
+  .score-big{font-family:'Fraunces',serif;font-weight:700;font-size:52px;margin:6px 0 2px;color:var(--accent-ink);}
+  .score-sub{color:var(--ink-soft);font-size:14.5px;margin-bottom:22px;}
+  .miss-list{list-style:none;margin:0 0 6px;padding:0;}
+  .miss-item{border-bottom:1px solid var(--line);padding:12px 0;font-size:14.5px;}
+  .miss-item:last-child{border-bottom:none;}
+  .miss-item .w{font-weight:600;margin-right:8px;}
+  .miss-item .a{color:var(--wrong-ink);}
+  .miss-item .b{color:var(--accent-ink);}
+  .foot-account{margin-top:20px;text-align:center;font-size:12.5px;color:var(--ink-soft);}
+  .foot-account button{background:none;border:none;color:var(--accent-ink);text-decoration:underline;font-size:12.5px;padding:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <h1>多益單字測驗</h1>
+    <span class="tag" id="masthead-tag"></span>
+  </div>
+  <div class="card" id="app">
+    <div class="center-note"><div class="spinner"></div>載入中…</div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   設定區：把 Google Cloud Console 申請到的 OAuth Client ID 貼在這裡
+   ==================================================================== */
+const GOOGLE_CLIENT_ID = '請貼上你的-client-id.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+const TARGET_FOLDER_NAME = 'TOEIC';
+/* ==================================================================== */
+
+let accessToken = null;
+let tokenClient = null;
+let files = [];
+let currentFile = null;
+let words = [];
+let quiz = [];
+let currentQ = 0;
+let score = 0;
+let missed = [];
+let answered = false;
+
+const app = document.getElementById('app');
+const mastheadTag = document.getElementById('masthead-tag');
+
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+/* ---------------- 登入 / Drive API ---------------- */
+
+function initAuth(){
+  if(GOOGLE_CLIENT_ID.indexOf('請貼上') === 0){
+    app.innerHTML = `
+      <div class="error-box">
+        <strong>還沒設定 Google Client ID</strong>
+        請打開 index.html，把最上面的 <code>GOOGLE_CLIENT_ID</code> 換成你在 Google Cloud Console 申請的 OAuth 用戶端 ID。
+      </div>
+    `;
+    return;
+  }
+  if(typeof google === 'undefined' || !google.accounts){
+    app.innerHTML = `<div class="center-note"><div class="spinner"></div>正在載入 Google 登入元件…</div>`;
+    setTimeout(initAuth, 300);
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: (resp) => {
+      if(resp.error){
+        renderLogin('登入失敗：' + esc(resp.error));
+        return;
+      }
+      accessToken = resp.access_token;
+      loadFileList();
+    }
+  });
+  renderLogin();
+}
+
+function renderLogin(errorMsg){
+  mastheadTag.textContent = '';
+  app.innerHTML = `
+    <div class="login-wrap">
+      <p>${errorMsg ? '<strong style="color:var(--wrong-ink)">'+esc(errorMsg)+'</strong><br>' : ''}
+      需要登入你的 Google 帳號，才能讀取雲端硬碟裡「${esc(TARGET_FOLDER_NAME)}」資料夾的單字檔。</p>
+      <button class="g-btn" onclick="doLogin()">使用 Google 帳號登入</button>
+    </div>
+  `;
+}
+
+function doLogin(){
+  tokenClient.requestAccessToken({prompt: accessToken ? '' : 'consent'});
+}
+
+function switchAccount(){
+  accessToken = null;
+  tokenClient.requestAccessToken({prompt: 'select_account'});
+}
+
+async function driveFetch(url){
+  const res = await fetch(url, {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  if(res.status === 401){
+    accessToken = null;
+    const err = new Error('unauthorized');
+    err.code = 'needs_reauth';
+    throw err;
+  }
+  if(!res.ok){
+    const body = await res.text().catch(()=> '');
+    const err = new Error('Drive API error ' + res.status + ' ' + body);
+    err.code = 'api_error';
+    throw err;
+  }
+  return res;
+}
+
+function friendlyDriveError(err, context){
+  if(err && err.code === 'needs_reauth'){
+    return '登入已過期，請重新登入 Google 帳號。';
+  }
+  return `${context}時發生問題：${esc(err && err.message || '')}`;
+}
+
+/* ---------------- 資料夾 / 檔案清單 ---------------- */
+
+async function loadFileList(){
+  app.innerHTML = `<div class="center-note"><div class="spinner"></div>正在尋找「${esc(TARGET_FOLDER_NAME)}」資料夾…</div>`;
+  try{
+    const folderQ = encodeURIComponent(`name = '${TARGET_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+    const folderRes = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${folderQ}&fields=files(id,name)`);
+    const folderData = await folderRes.json();
+    const folders = folderData.files || [];
+    if(!folders.length){
+      app.innerHTML = `
+        <div class="error-box"><strong>找不到「${esc(TARGET_FOLDER_NAME)}」資料夾</strong>請確認你登入的帳號的雲端硬碟裡有這個資料夾。</div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="loadFileList()">重新尋找</button></div>
+      `;
+      return;
+    }
+    const folderId = folders[0].id;
+    const childQ = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+    const filesRes = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${childQ}&fields=files(id,name,mimeType)&pageSize=100`);
+    const filesData = await filesRes.json();
+    files = (filesData.files || []).filter(f => /\.xlsx$/i.test(f.name || ''));
+    files.sort((a,b)=>{
+      const da = parseInt((a.name.match(/DAY\s*(\d+)/i)||[])[1] || '9999', 10);
+      const db = parseInt((b.name.match(/DAY\s*(\d+)/i)||[])[1] || '9999', 10);
+      if(da!==db) return da-db;
+      return a.name.localeCompare(b.name);
+    });
+    if(!files.length){
+      app.innerHTML = `
+        <div class="error-box"><strong>資料夾裡沒有 .xlsx 檔案</strong>請確認單字檔是 Excel（.xlsx）格式並放在這個資料夾內。</div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="loadFileList()">重新尋找</button></div>
+      `;
+      return;
+    }
+    renderFileList();
+  }catch(err){
+    if(err.code === 'needs_reauth'){ renderLogin('登入已過期，請重新登入。'); return; }
+    app.innerHTML = `
+      <div class="error-box"><strong>讀取資料夾清單失敗</strong>${friendlyDriveError(err,'讀取資料夾')}</div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="loadFileList()">重試</button></div>
+    `;
+  }
+}
+
+function dayLabel(name){
+  const m = name.match(/DAY\s*(\d+)/i);
+  if(m) return 'DAY ' + m[1];
+  return name.replace(/\.xlsx$/i,'');
+}
+
+function renderFileList(){
+  mastheadTag.textContent = '選擇單字檔';
+  const items = files.map(f => `
+    <li>
+      <button class="btn-block file-item" onclick="pickFile('${f.id}')">
+        <span>
+          <span class="day">${esc(dayLabel(f.name))}</span>
+          <div class="sub">${esc(f.name)}</div>
+        </span>
+        <span class="arrow">→</span>
+      </button>
+    </li>
+  `).join('');
+  app.innerHTML = `
+    <div class="day-label">${esc(TARGET_FOLDER_NAME)} 資料夾</div>
+    <div class="count-title">今天要考哪一份？</div>
+    <ul class="file-list">${items}</ul>
+    <div class="foot-account"><button onclick="switchAccount()">切換 Google 帳號</button></div>
+  `;
+}
+
+async function pickFile(fileId){
+  const file = files.find(f=>f.id===fileId);
+  currentFile = file;
+  app.innerHTML = `<div class="center-note"><div class="spinner"></div>正在讀取「${esc(file.name)}」…</div>`;
+  try{
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buf), {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+    const dataRows = rows.slice(1);
+    words = dataRows.map(r => ({
+      word: String(r[0]||'').trim(),
+      pos: String(r[1]||'').trim(),
+      cn: String(r[2]||'').trim(),
+      example: String(r[3]||'').trim(),
+      note: String(r[4]||'').trim(),
+    })).filter(w => w.word && w.cn);
+
+    if(words.length < 4){
+      app.innerHTML = `
+        <div class="error-box"><strong>這份檔案的單字太少</strong>至少需要 4 個單字才能出四選一的題目。</div>
+        <div class="btn-row"><button class="btn" onclick="renderFileList()">選擇其他檔案</button></div>
+      `;
+      return;
+    }
+    renderCountPicker();
+  }catch(err){
+    if(err.code === 'needs_reauth'){ renderLogin('登入已過期，請重新登入。'); return; }
+    app.innerHTML = `
+      <div class="error-box"><strong>讀取單字檔失敗</strong>${friendlyDriveError(err,'下載檔案')}</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="pickFile('${fileId}')">重試</button>
+        <button class="btn" onclick="renderFileList()">選擇其他檔案</button>
+      </div>
+    `;
+  }
+}
+
+/* ---------------- 測驗流程（跟原本一樣） ---------------- */
+
+function renderCountPicker(){
+  mastheadTag.textContent = dayLabel(currentFile.name);
+  const total = words.length;
+  const presets = [10,20,30].filter(n=>n<total);
+  const chips = presets.map(n=>`<button class="chip" onclick="setCount(${n})" id="chip-${n}">${n} 題</button>`).join('')
+    + `<button class="chip" onclick="setCount(${total})" id="chip-${total}">全部 ${total} 題</button>`;
+  app.innerHTML = `
+    <div class="day-label">${esc(currentFile.name)} · 共 ${total} 個單字</div>
+    <div class="count-title">要考幾題？</div>
+    <div class="chip-row">${chips}</div>
+    <div class="num-row">
+      <input type="number" id="count-input" min="1" max="${total}" value="${presets[0]||total}">
+      <span class="hint">或自行輸入（1 – ${total}）</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="beginQuiz()">開始測驗</button>
+      <button class="btn" onclick="renderFileList()">← 選擇其他檔案</button>
+    </div>
+  `;
+  setCount(presets[0]||total);
+}
+
+function setCount(n){
+  document.getElementById('count-input').value = n;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  const el = document.getElementById('chip-'+n);
+  if(el) el.classList.add('active');
+}
+
+function posTokens(pos){
+  return (pos||'').split(/[\/,、\s]+/).map(s=>s.trim()).filter(Boolean);
+}
+
+function buildDistractors(target, n){
+  const targetTokens = posTokens(target.pos);
+  const pool = words.filter(w => w.word !== target.word && w.cn !== target.cn);
+  const samePos = shuffle(pool.filter(w => posTokens(w.pos).some(t=>targetTokens.includes(t))));
+  const rest = shuffle(pool.filter(w => !samePos.includes(w)));
+  const chosen = [];
+  const usedCn = new Set([target.cn]);
+  for(const w of samePos.concat(rest)){
+    if(chosen.length>=n) break;
+    if(usedCn.has(w.cn)) continue;
+    usedCn.add(w.cn);
+    chosen.push(w);
+  }
+  return chosen;
+}
+
+function beginQuiz(){
+  let n = parseInt(document.getElementById('count-input').value, 10);
+  if(!n || n<1) n = 1;
+  if(n > words.length) n = words.length;
+  const selected = shuffle(words).slice(0, n);
+  quiz = selected.map(w=>{
+    const distractors = buildDistractors(w, 3);
+    const options = shuffle([w.cn, ...distractors.map(d=>d.cn)]);
+    return { word:w.word, pos:w.pos, cn:w.cn, example:w.example, note:w.note, options };
+  });
+  currentQ = 0; score = 0; missed = [];
+  renderQuestion();
+}
+
+function renderQuestion(){
+  answered = false;
+  const q = quiz[currentQ];
+  mastheadTag.textContent = `第 ${currentQ+1} / ${quiz.length} 題`;
+  const ticks = quiz.map((_,i)=>{
+    let cls = 'tick';
+    if(i<currentQ) cls += ' done';
+    else if(i===currentQ) cls += ' current';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+  const opts = q.options.map((o,i)=>`
+    <button class="btn-block opt" id="opt-${i}" onclick="selectAnswer(${i})">${esc(o)}</button>
+  `).join('');
+  app.innerHTML = `
+    <div class="progress">${ticks}</div>
+    <div class="q-eyebrow">這個單字的中文意思是？</div>
+    <div class="q-word">${esc(q.word)}</div>
+    <div class="options">${opts}</div>
+    <div id="feedback"></div>
+  `;
+}
+
+function selectAnswer(idx){
+  if(answered) return;
+  answered = true;
+  const q = quiz[currentQ];
+  const picked = q.options[idx];
+  const isCorrect = picked === q.cn;
+  if(isCorrect) score++;
+  else missed.push({word:q.word, picked, correct:q.cn});
+
+  q.options.forEach((o,i)=>{
+    const el = document.getElementById('opt-'+i);
+    el.classList.add('disabled');
+    if(o === q.cn) el.classList.add('correct');
+    else if(i===idx) el.classList.add('wrong');
+    else el.classList.add('dim');
+  });
+
+  const isLast = currentQ === quiz.length-1;
+  const posLine = q.pos ? `<div class="detail-row"><span class="k">詞性 ／ 完整意思</span>${esc(q.pos)}　${esc(q.cn)}</div>` : '';
+  const exampleLine = q.example ? `<div class="detail-row"><span class="k">例句</span><div class="example">${esc(q.example)}</div></div>` : '';
+  const noteLine = q.note ? `<div class="detail-row note">${esc(q.note)}</div>` : '';
+
+  document.getElementById('feedback').innerHTML = `
+    <div class="feedback">
+      <div class="verdict ${isCorrect?'correct':'wrong'}">${isCorrect?'答對了！':'答錯了，正確答案如下：'}</div>
+      ${posLine}
+      ${exampleLine}
+      ${noteLine}
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="${isLast?'renderResult()':'nextQuestion()'}">${isLast?'完成測驗':'下一題 →'}</button>
+      </div>
+    </div>
+  `;
+}
+
+function nextQuestion(){
+  currentQ++;
+  renderQuestion();
+}
+
+function renderResult(){
+  mastheadTag.textContent = dayLabel(currentFile.name);
+  const total = quiz.length;
+  const pct = Math.round(score/total*100);
+  const missList = missed.length ? `
+    <ul class="miss-list">
+      ${missed.map(m=>`
+        <li class="miss-item">
+          <span class="w">${esc(m.word)}</span>
+          你選了「<span class="a">${esc(m.picked)}</span>」，正確是「<span class="b">${esc(m.correct)}</span>」
+        </li>
+      `).join('')}
+    </ul>
+  ` : `<p class="hint">全部答對，太強了。</p>`;
+
+  app.innerHTML = `
+    <div class="day-label">${esc(currentFile.name)}</div>
+    <div class="score-big">${score} / ${total}</div>
+    <div class="score-sub">答對率 ${pct}%</div>
+    ${missList}
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="renderCountPicker()">再測一次這份檔案</button>
+      <button class="btn" onclick="renderFileList()">選擇其他天</button>
+    </div>
+  `;
+}
+
+initAuth();
+</script>
+</body>
+</html>
