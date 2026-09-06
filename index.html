@@ -184,14 +184,18 @@ function initAuth(){
     scope: DRIVE_SCOPE,
     callback: (resp) => {
       if(resp.error){
-        renderLogin('登入失敗：' + esc(resp.error));
+        renderLogin();
         return;
       }
       accessToken = resp.access_token;
       loadFileList();
+    },
+    error_callback: () => {
+      renderLogin();
     }
   });
-  renderLogin();
+  app.innerHTML = `<div class="center-note"><div class="spinner"></div>正在確認登入狀態…</div>`;
+  tokenClient.requestAccessToken({prompt: 'none'});
 }
 
 function renderLogin(errorMsg){
@@ -206,7 +210,7 @@ function renderLogin(errorMsg){
 }
 
 function doLogin(){
-  tokenClient.requestAccessToken({prompt: accessToken ? '' : 'consent'});
+  tokenClient.requestAccessToken({prompt: 'consent'});
 }
 
 function switchAccount(){
